@@ -5,11 +5,11 @@ using System.Windows.Forms;
 using Microsoft.VisualBasic;
 using PKHeX.Core;
 
-namespace PkHeXEgglockGenerator
+namespace PkHeXEggLockeGenerator
 {
-    public class EgglockGenerator : IPlugin
+    public class EggLockeGenerator : IPlugin
     {
-        public string Name => nameof(EgglockGenerator);
+        public string Name => "EggLocke Generator";
         public int Priority => 1; // Loading order, lowest is first.
 
         // Initialized on plugin load
@@ -41,7 +41,7 @@ namespace PkHeXEgglockGenerator
             var ctrl = new ToolStripMenuItem(Name);
             tools.DropDownItems.Add(ctrl);
 
-            var c4 = new ToolStripMenuItem($"{Name} - Generate Eggs");
+            var c4 = new ToolStripMenuItem("Generate Eggs");
             c4.Click += (s, e) => ModifySaveFile();
             ctrl.DropDownItems.Add(c4);
             Console.WriteLine($"{Name} added menu items.");
