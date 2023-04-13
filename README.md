@@ -1,5 +1,7 @@
 # PKHeX Egglocke Generator
 
+![EggLocke Options Screenshot](/screenshot.png)
+
 A plugin for [PKHeX](https://github.com/kwsch/PKHeX) that generates a PC Box full of randomly generated Pokemon.
 
 ---
