@@ -14,21 +14,17 @@ If you want a legal egg generator, please see [PkHeX Bulk Egg Generator](https:/
 ## Features
 **Fully randomly generated Pokemon Eggs.**
 
-The current list of attributes of a Pokemon that will be random:
+The current list of attributes of a Pokemon that can be random:
 - Species
 - Gender
 - IV Values (1-31)
-- EV Values (1-255)
-- Shiny-ness chance (fixed 2%)
+- EV Values (0-255)
+- Shiny-ness chance (default 2%)
+- Pokerus chance (default 1 in 65535)
 - Starting Moveset, between 1-4 randomly picked moves
 - Ability (Coinflip on Hidden or Natural Gen4 and earlier, Purely random Gen5 or later)
 - Held Item (Gen5 or later)
-- Very very small chance of Pokerus. (fixed 1 in 35565 chances)
 
----
-
-## Features To Implement
-- A functioning GUI to allow fine-tuning
 
 ---
 
@@ -41,7 +37,7 @@ The current list of attributes of a Pokemon that will be random:
 PkHeX/
     PkHeX.exe
     plugins/
-        PkHeXEgglockGenerator.dll
+        PkHeXEgglockeGenerator.dll
 ```
 
 - Open PkHeX
