@@ -1,6 +1,5 @@
 # PKHeX Egglocke Generator
-
-![EggLocke Options Screenshot](/screenshot.png)
+![Pokemon Egglocke Generator](https://repository-images.githubusercontent.com/627181349/167135ab-b738-4858-8781-0ed97235573c)
 
 A plugin for [PKHeX](https://github.com/kwsch/PKHeX) that generates a PC Box full of randomly generated Pokemon.
 
@@ -48,9 +47,9 @@ PkHeX/
 - Open PkHeX
 - If not setup already, click `Options` then `Settings`, and navigate to the `Startup` tab.
     - Set `ForceHaXOnLaunch` to `True`
-- From the `Tools` dropdown, hover `EgglockGenerator` and click `Generate Eggs`.
-- Enter the Box ID you wish to fill with Eggs. (Defaults to `2`)
-- Congrats, you have a box full of randomly generated Pokemon! You can repeat the steps to fill as many boxes as you'd like.
+- From the `Tools` dropdown, hover `Egglocke Generator` and click `Generate Eggs`.
+
+![EggLocke Options Screenshot](/screenshot.png)
 
 ---
 
