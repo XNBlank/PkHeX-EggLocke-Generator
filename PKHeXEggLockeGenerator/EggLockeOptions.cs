@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using PKHeX.Core;
 using System.Drawing;
 using System.Text.RegularExpressions;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace PkHeXEggLockeGenerator
 {
@@ -43,7 +44,20 @@ namespace PkHeXEggLockeGenerator
         private int shinyChanceMaxValue = 100;
         private int pokerusChanceValue = 1;
         private int pokerusChanceMaxValue = 65535;
+        private int minMovesValue = 1;
         private int maxMovesValue = 4;
+
+        private Dictionary<int, string?> blacklistedPokemon = new Dictionary<int, string?>();
+        private Dictionary<int, string?> blacklistedAbilites = new Dictionary<int, string?>();
+        private Dictionary<int, string?> blacklistedItems = new Dictionary<int, string?>();
+
+        private Dictionary<int, string?> usablePokemon = new Dictionary<int, string?>();
+        private Dictionary<int, string?> usableAbilites = new Dictionary<int, string?>();
+        private Dictionary<int, string?> usableItems = new Dictionary<int, string?>();
+
+        IEnumerable<int> usablePokemonIDs;
+        IEnumerable<int> usableItemIDs;
+        IEnumerable<int> usableAbilityIDs;
 
         public void Initialize(params object[] args)
         {
@@ -69,13 +83,62 @@ namespace PkHeXEggLockeGenerator
             this.SaveFileEditor = SaveFileEditor;
             this.PKMEditor = PKMEditor;
 
+            SaveFile sav = SaveFileEditor.SAV;
+
+            IReadOnlyList<PKM> gamePokemon = sav.GetAllPKM();
+            ReadOnlySpan<ushort> heldItems = sav.HeldItems;
+
+            LanguageID lang = Language.GetSafeLanguage(sav.Generation, LanguageID.English, sav.Version);
+            GameStrings strings = GameInfo.GetStrings(lang.GetLanguage2CharName());
+
+            // Enable Fairy Type Blacklist if Gen 6 or later
+            pokemonBlackListFairy.Enabled = (sav.Generation >= 6);
+
             selectedBoxes.Items.Clear();
 
-            int boxes = SaveFileEditor.SAV.BoxCount;
+            int boxes = sav.BoxCount;
             for (int i = 1; i < boxes + 1; i++)
             {
                 selectedBoxes.Items.Add($"Box {i}", (i == 2 ? true : false));
             }
+
+            pokemonBlackList.Items.Clear();
+            Dictionary<int, string> pokemon = Enum.GetValues(typeof(Species)).Cast<Species>().ToDictionary(t => (int)t, t => t.ToString());
+            foreach (var i in pokemon)
+            {
+                string name = SpeciesName.GetSpeciesName((ushort)i.Key, (int)lang);
+
+                if (i.Key == (int)Species.MAX_COUNT) continue;
+                if (i.Key == 0) continue; // Skip Egg/None
+                if (sav.Personal.IsSpeciesInGame((ushort)i.Key))
+                {
+                    pokemonBlackList.Items.Add(new Pokemon { DisplayValue = name, Index = i.Key });
+                }
+            }
+            pokemonBlackList.DisplayMember = "DisplayValue";
+            pokemonBlackList.ValueMember = "Index";
+
+            pokemonBlackListAbilities.Items.Clear();
+            Dictionary<int, string> abilites = Enum.GetValues(typeof(Ability)).Cast<Ability>().ToDictionary(t => (int)t, t => t.ToString());
+            foreach (var i in abilites)
+            {
+                if (i.Key > sav.MaxAbilityID) continue;
+                pokemonBlackListAbilities.Items.Add(new PokemonAbility { DisplayValue = i.Value, Index = i.Key });
+            }
+
+            pokemonBlackListAbilities.DisplayMember = "DisplayValue";
+            pokemonBlackListAbilities.ValueMember = "Index";
+
+            pokemonBlackListItems.Items.Clear();
+            foreach (ushort i in heldItems)
+            {
+                string itemName = strings.itemlist[i];
+                if (itemName == "???") continue;
+                pokemonBlackListItems.Items.Add(new PokemonHeldItem { DisplayValue = itemName, Index = i });
+            }
+            pokemonBlackListItems.DisplayMember = "DisplayValue";
+            pokemonBlackListItems.ValueMember = "Index";
+
         }
 
         private void enableForm(bool enable)
@@ -102,6 +165,18 @@ namespace PkHeXEggLockeGenerator
         {
             clearLog();
             enableForm(false);
+
+            usablePokemon = pokemonBlackList.Items.Cast<Pokemon>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            usableItems = pokemonBlackListItems.Items.Cast<PokemonHeldItem>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            usableAbilites = pokemonBlackListAbilities.Items.Cast<PokemonAbility>().ToDictionary(t => t.Index, t => t.DisplayValue);
+
+            blacklistedPokemon = pokemonBlackList.CheckedItems.Cast<Pokemon>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            blacklistedItems = pokemonBlackListItems.CheckedItems.Cast<PokemonHeldItem>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            blacklistedAbilites = pokemonBlackListAbilities.CheckedItems.Cast<PokemonAbility>().ToDictionary(t => t.Index, t => t.DisplayValue);
+
+            usablePokemonIDs = usablePokemon.Keys.Except(blacklistedPokemon.Keys);
+            usableItemIDs = usableItems.Keys.Except(blacklistedItems.Keys);
+            usableAbilityIDs = usableAbilites.Keys.Except(blacklistedAbilites.Keys);
 
             int randomSeedValue = (int)randomSeed.Value;
             if (randomSeedValue > -1)
@@ -145,6 +220,7 @@ namespace PkHeXEggLockeGenerator
             pokerusChanceValue = (int)pokerusChance.Value;
             pokerusChanceMaxValue = (int)pokerusChanceMax.Value;
 
+            minMovesValue = (int)minMoves.Value;
             maxMovesValue = (int)maxMoves.Value;
 
             log("Checking PC Boxes...");
@@ -185,7 +261,8 @@ namespace PkHeXEggLockeGenerator
                 {
                     log($"Generating Pokemon #{j + 1}...");
                     PKM pkm = EntityBlank.GetBlank(sav.Generation, version);
-                    pkm.Species = (ushort)random.Next(1, maxSpecies);
+                    //pkm.Species = (ushort)random.Next(1, maxSpecies);
+                    pkm.Species = (ushort)usablePokemonIDs.ElementAt(random.Next(0, usablePokemonIDs.Count()));
                     pkm.SetSuggestedFormArgument(pkm.Species);
 
                     generatedPokemon.Add(GenerateEggs(pkm, sav, version));
@@ -303,13 +380,14 @@ namespace PkHeXEggLockeGenerator
                 if (sav.Generation >= 5)
                 {
                     // Get Max ItemID
-                    int maxItemID = sav.MaxItemID;
+                    //int maxItemID = sav.MaxItemID;
 
                     int itemChance = random.Next(0, 100);
                     if (itemChance <= 70)
                     {
                         PKM item_pkm = pkm;
-                        int randItem = random.Next(0, maxItemID);
+                        //int randItem = random.Next(0, maxItemID);
+                        int randItem = (ushort)usableItemIDs.ElementAt(random.Next(0, usableItemIDs.Count()));
 
                         // Check if Item can even be technically held.
                         item_pkm.ApplyHeldItem(randItem, sav.Context);
@@ -326,7 +404,8 @@ namespace PkHeXEggLockeGenerator
             // Gen4 and earlier is a coinflip on hidden ability
             if (doRandomizeAbilities)
             {
-                pkm.Ability = random.Next(1, sav.MaxAbilityID);
+                //pkm.Ability = random.Next(1, sav.MaxAbilityID);
+                pkm.Ability = (ushort)usableAbilityIDs.ElementAt(random.Next(0, usableAbilityIDs.Count()));
             }
 
             // Maybe set Shiny
@@ -341,7 +420,7 @@ namespace PkHeXEggLockeGenerator
             if (doRandomizeMoves)
             {
                 int maxMoves = sav.MaxMoveID;
-                int moveCount = random.Next(1, maxMovesValue);
+                int moveCount = random.Next(minMovesValue, maxMovesValue);
 
                 // Clear auto-generated move pool.
                 pkm.Move1 = (ushort)PKHeX.Core.Move.None;
@@ -381,13 +460,13 @@ namespace PkHeXEggLockeGenerator
             if (pokerusChanceValue > 0)
             {
                 if (pokerusChanceValue > pokerusChanceMaxValue) pokerusChanceMaxValue = pokerusChanceValue;
-                int pkrsChance = random.Next(0, shinyChanceMaxValue);
+                int pkrsChance = random.Next(0, pokerusChanceMaxValue);
 
-                if (pokerusChanceValue <= pkrsChance)
+                if (pokerusChanceValue >= pkrsChance)
                 {
                     pkm.PKRS_Infected = true;
-                    pkm.PKRS_Days = 1;
-                    pkm.PKRS_Strain = 1;
+                    pkm.PKRS_Days = random.Next(1, 3);
+                    pkm.PKRS_Strain = random.Next(1, 3);
                     pkm.PKRS_Cured = false;
                 }
             }
@@ -415,5 +494,348 @@ namespace PkHeXEggLockeGenerator
                 randomSeed.Text = "-1";
             }
         }
+
+        private void pokemonBlackListLegendaries_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < pokemonBlackList.Items.Count; ++i)
+            {
+                Pokemon? pokemon = pokemonBlackList.Items[i] as Pokemon;
+                bool blacklist = false;
+
+                if (pokemon != null)
+                {
+                    switch (pokemon.Index)
+                    {
+                        case ((int)Species.Shedinja):
+                        case ((int)Species.Mew):
+                        case ((int)Species.Mewtwo):
+                        case ((int)Species.Articuno):
+                        case ((int)Species.Moltres):
+                        case ((int)Species.Zapdos):
+                        case ((int)Species.Celebi):
+                        case ((int)Species.Raikou):
+                        case ((int)Species.Entei):
+                        case ((int)Species.Suicune):
+                        case ((int)Species.Lugia):
+                        case ((int)Species.HoOh):
+                        case ((int)Species.Regirock):
+                        case ((int)Species.Regice):
+                        case ((int)Species.Registeel):
+                        case ((int)Species.Latias):
+                        case ((int)Species.Latios):
+                        case ((int)Species.Groudon):
+                        case ((int)Species.Kyogre):
+                        case ((int)Species.Rayquaza):
+                        case ((int)Species.Jirachi):
+                        case ((int)Species.Deoxys):
+                        case ((int)Species.Uxie):
+                        case ((int)Species.Mesprit):
+                        case ((int)Species.Azelf):
+                        case ((int)Species.Heatran):
+                        case ((int)Species.Regigigas):
+                        case ((int)Species.Cresselia):
+                        case ((int)Species.Darkrai):
+                        case ((int)Species.Shaymin):
+                        case ((int)Species.Manaphy):
+                        case ((int)Species.Phione):
+                        case ((int)Species.Dialga):
+                        case ((int)Species.Palkia):
+                        case ((int)Species.Giratina):
+                        case ((int)Species.Arceus):
+                        case ((int)Species.Victini):
+                        case ((int)Species.Cobalion):
+                        case ((int)Species.Terrakion):
+                        case ((int)Species.Virizion):
+                        case ((int)Species.Tornadus):
+                        case ((int)Species.Thundurus):
+                        case ((int)Species.Landorus):
+                        case ((int)Species.Reshiram):
+                        case ((int)Species.Zekrom):
+                        case ((int)Species.Kyurem):
+                        case ((int)Species.Keldeo):
+                        case ((int)Species.Meloetta):
+                        case ((int)Species.Genesect):
+                        case ((int)Species.Diancie):
+                        case ((int)Species.Hoopa):
+                        case ((int)Species.Volcanion):
+                        case ((int)Species.Magearna):
+                        case ((int)Species.Xerneas):
+                        case ((int)Species.Yveltal):
+                        case ((int)Species.Zygarde):
+                        case ((int)Species.TypeNull):
+                        case ((int)Species.Silvally):
+                        case ((int)Species.TapuBulu):
+                        case ((int)Species.TapuFini):
+                        case ((int)Species.TapuKoko):
+                        case ((int)Species.TapuLele):
+                        case ((int)Species.Nihilego):
+                        case ((int)Species.Buzzwole):
+                        case ((int)Species.Pheromosa):
+                        case ((int)Species.Xurkitree):
+                        case ((int)Species.Celesteela):
+                        case ((int)Species.Kartana):
+                        case ((int)Species.Guzzlord):
+                        case ((int)Species.Poipole):
+                        case ((int)Species.Naganadel):
+                        case ((int)Species.Stakataka):
+                        case ((int)Species.Blacephalon):
+                        case ((int)Species.Marshadow):
+                        case ((int)Species.Zeraora):
+                        case ((int)Species.Meltan):
+                        case ((int)Species.Melmetal):
+                        case ((int)Species.Cosmog):
+                        case ((int)Species.Cosmoem):
+                        case ((int)Species.Solgaleo):
+                        case ((int)Species.Lunala):
+                        case ((int)Species.Necrozma):
+                        case ((int)Species.Kubfu):
+                        case ((int)Species.Urshifu):
+                        case ((int)Species.Regieleki):
+                        case ((int)Species.Regidrago):
+                        case ((int)Species.Glastrier):
+                        case ((int)Species.Spectrier):
+                        case ((int)Species.Enamorus):
+                        case ((int)Species.Zacian):
+                        case ((int)Species.Zamazenta):
+                        case ((int)Species.Eternatus):
+                        case ((int)Species.Calyrex):
+                        case ((int)Species.Zarude):
+                        case ((int)Species.TingLu):
+                        case ((int)Species.ChienPao):
+                        case ((int)Species.WoChien):
+                        case ((int)Species.ChiYu):
+                        case ((int)Species.Koraidon):
+                        case ((int)Species.Miraidon):
+                            blacklist = true;
+                            break;
+                    }
+
+                    if (blacklist)
+                    {
+                        pokemonBlackList.SetItemChecked(i, blacklist);
+                    }
+                }
+            }
+        }
+
+        private void pokemonBlackListDefaultAbilities_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < pokemonBlackListAbilities.Items.Count; ++i)
+            {
+                PokemonAbility? ability = pokemonBlackListAbilities.Items[i] as PokemonAbility;
+                bool blacklist = false;
+
+                if (ability != null)
+                {
+                    switch (ability.DisplayValue)
+                    {
+                        case "WonderGuard":
+                        case "GoodasGold":
+                        case "BeastBoost":
+                            blacklist = true;
+                            break;
+                    }
+
+                    if (blacklist) { 
+                        log($"Blacklisting {ability.Index} - {ability.DisplayValue}");
+                        pokemonBlackListAbilities.SetItemChecked(i, blacklist);
+                    }
+                }
+            }
+        }
+
+        private void pokemonBlackListDefaultItems_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < pokemonBlackListItems.Items.Count; ++i)
+            {
+                PokemonHeldItem? item = pokemonBlackListItems.Items[i] as PokemonHeldItem;
+                bool blacklist = false;
+
+                if (item != null)
+                {
+                    switch (item.DisplayValue)
+                    {
+                        case "Eviolite":
+                        case "Assault Vest":
+                        case "Weakness Policy":
+                        case "Heavy-Duty Boots":
+                        case "Leftovers":
+                        case "Choice Scarf":
+                        case "Choice Band":
+                        case "Choice Specs":
+                        case "Rocky Helmet":
+                        case "Air Balloon":
+                        case "Focus Sash":
+                        case "Life Orb":
+                        case "Booster Energy":
+                        case "Punching Glove":
+                        case "Loaded Dice":
+                            blacklist = true;
+                            break;
+                    }
+                    if (blacklist)
+                    {
+                        log($"Blacklisting {item.Index} - {item.DisplayValue}");
+                        pokemonBlackListItems.SetItemChecked(i, blacklist);
+                    }
+                }
+            }
+        }
+
+        private void pokemonBlackListAll_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < pokemonBlackList.Items.Count; ++i)
+            {
+                pokemonBlackList.SetItemChecked(i, true);
+            }
+        }
+
+        private void pokemonBlackListNone_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < pokemonBlackList.Items.Count; ++i)
+            {
+                pokemonBlackList.SetItemChecked(i, false);
+            }
+        }
+
+        private bool pokemonIsType(PKM pkm, MoveType type)
+        {
+            if (pkm.PersonalInfo.Type1 == (byte)type || pkm.PersonalInfo.Type2 == (byte)type)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private void setBlackListByType(MoveType type)
+        {
+            for (int i = 0; i < pokemonBlackList.Items.Count; ++i)
+            {
+                PKM pkm = SaveFileEditor.SAV.BlankPKM;
+
+                Pokemon? pokemonCheckbox = pokemonBlackList.Items[i] as Pokemon;
+
+                if (pokemonCheckbox != null)
+                {
+                    pkm.Species = (ushort)pokemonCheckbox.Index;
+
+                    bool doCheck = pokemonIsType(pkm, type);
+
+                    if (doCheck) {
+                        pokemonBlackList.SetItemChecked(i, true);
+                    }
+                }
+            }
+        }
+
+        private void pokemonBlackListNormal_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Normal);
+        }
+
+        private void pokemonBlackListFire_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Fire);
+        }
+
+        private void pokemonBlackListWater_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Water);
+        }
+
+        private void pokemonBlackListGrass_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Grass);
+        }
+
+        private void pokemonBlackListFlying_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Flying);
+        }
+
+        private void pokemonBlackListElectric_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Electric);
+        }
+
+        private void pokemonBlackListRock_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Rock);
+        }
+
+        private void pokemonBlackListBug_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Bug);
+        }
+
+        private void pokemonBlackListGround_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Ground);
+        }
+
+        private void pokemonBlackListPoison_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Poison);
+        }
+
+        private void pokemonBlackListIce_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Ice);
+        }
+
+        private void pokemonBlackListSteel_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Steel);
+        }
+
+        private void pokemonBlackListPsychic_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Psychic);
+        }
+
+        private void pokemonBlackListGhost_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Ghost);
+        }
+
+        private void pokemonBlackListDark_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Dark);
+        }
+
+        private void pokemonBlackListFighting_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Fighting);
+        }
+
+        private void pokemonBlackListDragon_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Dragon);
+        }
+
+        private void pokemonBlackListFairy_Click(object sender, EventArgs e)
+        {
+            setBlackListByType(MoveType.Fairy);
+        }
+
+    }
+
+    public class Pokemon
+    {
+        public string? DisplayValue { get; set; }
+        public int Index { get; set; }
+    }
+
+    public class PokemonHeldItem
+    {
+        public string? DisplayValue { get; set; }
+        public int Index { get; set; }
+    }
+
+    public class PokemonAbility
+    {
+        public string? DisplayValue { get; set; }
+        public int Index { get; set; }
     }
 }

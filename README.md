@@ -43,7 +43,7 @@ PkHeX/
 - Open PkHeX
 - If not setup already, click `Options` then `Settings`, and navigate to the `Startup` tab.
     - Set `ForceHaXOnLaunch` to `True`
-- From the `Tools` dropdown, hover `Egglocke Generator` and click `Generate Eggs`.
+- From the `Tools` dropdown, click `Egglocke Generator`.
 
 ![EggLocke Options Screenshot](/screenshot.png)
 
