@@ -123,6 +123,7 @@ namespace PkHeXEggLockeGenerator
             foreach (var i in abilites)
             {
                 if (i.Key > sav.MaxAbilityID) continue;
+                if (i.Key == 0) continue;
                 pokemonBlackListAbilities.Items.Add(new PokemonAbility { DisplayValue = i.Value, Index = i.Key });
             }
 
@@ -404,8 +405,15 @@ namespace PkHeXEggLockeGenerator
             // Gen4 and earlier is a coinflip on hidden ability
             if (doRandomizeAbilities)
             {
-                //pkm.Ability = random.Next(1, sav.MaxAbilityID);
-                pkm.Ability = (ushort)usableAbilityIDs.ElementAt(random.Next(0, usableAbilityIDs.Count()));
+                if (sav.Generation >= 5)
+                {
+                    pkm.Ability = (ushort)usableAbilityIDs.ElementAt(random.Next(0, usableAbilityIDs.Count()));
+                    log($"Setting ability {pkm.Ability}.");
+                }
+                else if (sav.Generation > 2)
+                {
+                    pkm.Ability = pkm.PersonalInfo.GetAbilityAtIndex(random.Next(0, 1));
+                }
             }
 
             // Maybe set Shiny
