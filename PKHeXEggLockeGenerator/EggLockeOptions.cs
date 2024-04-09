@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
-using PKHeX.Core;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
@@ -55,9 +54,9 @@ namespace PkHeXEggLockeGenerator
         private Dictionary<int, string?> usableAbilites = new Dictionary<int, string?>();
         private Dictionary<int, string?> usableItems = new Dictionary<int, string?>();
 
-        IEnumerable<int> usablePokemonIDs;
-        IEnumerable<int> usableItemIDs;
-        IEnumerable<int> usableAbilityIDs;
+        IEnumerable<int> usablePokemonIDs = Enumerable.Empty<int>();
+        IEnumerable<int> usableItemIDs = Enumerable.Empty<int>();
+        IEnumerable<int> usableAbilityIDs = Enumerable.Empty<int>();
 
         public void Initialize(params object[] args)
         {
@@ -78,6 +77,7 @@ namespace PkHeXEggLockeGenerator
 
         public EggLockeOptions(ISaveFileProvider SaveFileEditor, IPKMView PKMEditor)
         {
+            Application.SetHighDpiMode(HighDpiMode.DpiUnaware);
             InitializeComponent();
 
             this.SaveFileEditor = SaveFileEditor;
@@ -167,13 +167,25 @@ namespace PkHeXEggLockeGenerator
             clearLog();
             enableForm(false);
 
-            usablePokemon = pokemonBlackList.Items.Cast<Pokemon>().ToDictionary(t => t.Index, t => t.DisplayValue);
-            usableItems = pokemonBlackListItems.Items.Cast<PokemonHeldItem>().ToDictionary(t => t.Index, t => t.DisplayValue);
-            usableAbilites = pokemonBlackListAbilities.Items.Cast<PokemonAbility>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            usablePokemon.Clear();
+            usableItems.Clear();
+            usableAbilites.Clear();
 
-            blacklistedPokemon = pokemonBlackList.CheckedItems.Cast<Pokemon>().ToDictionary(t => t.Index, t => t.DisplayValue);
-            blacklistedItems = pokemonBlackListItems.CheckedItems.Cast<PokemonHeldItem>().ToDictionary(t => t.Index, t => t.DisplayValue);
-            blacklistedAbilites = pokemonBlackListAbilities.CheckedItems.Cast<PokemonAbility>().ToDictionary(t => t.Index, t => t.DisplayValue);
+            blacklistedPokemon.Clear();
+            blacklistedItems.Clear();
+            blacklistedAbilites.Clear();
+
+            usablePokemonIDs = Enumerable.Empty<int>();
+            usableItemIDs = Enumerable.Empty<int>();
+            usableAbilityIDs = Enumerable.Empty<int>();
+
+            usablePokemon = pokemonBlackList.Items.Cast<Pokemon>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
+            usableItems = pokemonBlackListItems.Items.Cast<PokemonHeldItem>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
+            usableAbilites = pokemonBlackListAbilities.Items.Cast<PokemonAbility>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
+
+            blacklistedPokemon = pokemonBlackList.CheckedItems.Cast<Pokemon>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
+            blacklistedItems = pokemonBlackListItems.CheckedItems.Cast<PokemonHeldItem>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
+            blacklistedAbilites = pokemonBlackListAbilities.CheckedItems.Cast<PokemonAbility>().GroupBy(t => t.Index + ":" + t.DisplayValue, StringComparer.OrdinalIgnoreCase).ToDictionary(t => int.Parse(t.Key.Split(":")[0]), t => t.Key.Split(":")[1]);
 
             usablePokemonIDs = usablePokemon.Keys.Except(blacklistedPokemon.Keys);
             usableItemIDs = usableItems.Keys.Except(blacklistedItems.Keys);
@@ -294,8 +306,9 @@ namespace PkHeXEggLockeGenerator
             // Setup Egg Data
             pkm.Nickname = SpeciesName.GetSpeciesNameGeneration(0, sav.Language, sav.Generation);
             pkm.IsNicknamed = true;
-            pkm.OT_Friendship = EggStateLegality.GetMinimumEggHatchCycles(pkm);
-            pkm.Met_Location = 0;
+            // pkm.OriginalTrainerFriendship = EggStateLegality.GetMinimumEggHatchCycles(pkm);
+            pkm.OriginalTrainerFriendship = 1;
+            pkm.MetLocation = 0;
             pkm.Gender = pkm.GetSaneGender();
 
             // Give us a legit Met Location. Not sure if this is really needed but added just in case of game quirks
@@ -306,13 +319,13 @@ namespace PkHeXEggLockeGenerator
                 case GameVersion.BD:
                 case GameVersion.SP:
                 case GameVersion.BDSP:
-                    pkm.Met_Location = 65535;
+                    pkm.MetLocation = 65535;
                     break;
                 case GameVersion.Pt:
-                    pkm.Egg_Location = 2000;
+                    pkm.EggLocation = 2000;
                     pkm.IsNicknamed = false;
-                    pkm.Met_Level = 0;
-                    pkm.Version = (int)version;
+                    pkm.MetLevel = 0;
+                    pkm.Version = version;
                     break;
                 case GameVersion.D:
                 case GameVersion.P:
@@ -321,27 +334,27 @@ namespace PkHeXEggLockeGenerator
                 case GameVersion.DP:
                 case GameVersion.HGSS:
                     pkm.IsNicknamed = false;
-                    pkm.Version = (int)sav.Context.GetSingleGameVersion();
-                    pkm.Egg_Location = 2000;
+                    pkm.Version = sav.Context.GetSingleGameVersion();
+                    pkm.EggLocation = 2000;
                     break;
                 case GameVersion.FR:
                 case GameVersion.LG:
                 case GameVersion.FRLG:
-                    pkm.Met_Location = Locations.HatchLocationFRLG;
+                    pkm.MetLocation = Locations.HatchLocationFRLG;
                     break;
                 case GameVersion.R:
                 case GameVersion.S:
                 case GameVersion.E:
                 case GameVersion.RS:
                 case GameVersion.RSE:
-                    pkm.Met_Location = Locations.HatchLocationRSE;
-                    pkm.Version = (int)sav.Context.GetSingleGameVersion();
+                    pkm.MetLocation = Locations.HatchLocationRSE;
+                    pkm.Version = sav.Context.GetSingleGameVersion();
                     break;
                 case GameVersion.GSC:
                     pkm.SetNickname("EGG");
                     break;
                 case GameVersion.SV:
-                    pkm.Met_Location = Locations.HatchLocation9;
+                    pkm.MetLocation = Locations.HatchLocation9;
                     if (pkm is ITeraType tera)
                     {
                         var type = Tera9RNG.GetTeraTypeFromPersonal(pkm.Species, pkm.Form, Util.Rand.Rand64());
@@ -448,7 +461,7 @@ namespace PkHeXEggLockeGenerator
                         nextMove = (ushort)random.Next(0, maxMoves);
 
                         // Try to add Move to Move List
-                        pkm.PushMove(nextMove);
+                        pkm.AddMove(nextMove);
 
                         attempt++;
                     } while (pkm.MoveCount < moveCount && attempt < 25);
@@ -472,10 +485,10 @@ namespace PkHeXEggLockeGenerator
 
                 if (pokerusChanceValue >= pkrsChance)
                 {
-                    pkm.PKRS_Infected = true;
-                    pkm.PKRS_Days = random.Next(1, 3);
-                    pkm.PKRS_Strain = random.Next(1, 3);
-                    pkm.PKRS_Cured = false;
+                    pkm.IsPokerusInfected = true;
+                    pkm.PokerusDays = random.Next(1, 3);
+                    pkm.PokerusStrain = random.Next(1, 3);
+                    pkm.IsPokerusCured = false;
                 }
             }
 

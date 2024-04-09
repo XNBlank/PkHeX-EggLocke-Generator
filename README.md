@@ -1,4 +1,5 @@
-# PKHeX Egglocke Generator
+# PKHeX Egglocke Generator [ Version 1.1.3 ]
+### Supports PKHeX version 24.03.26
 ![Pokemon Egglocke Generator](https://repository-images.githubusercontent.com/627181349/167135ab-b738-4858-8781-0ed97235573c)
 
 A plugin for [PKHeX](https://github.com/kwsch/PKHeX) that generates a PC Box full of randomly generated Pokemon.
