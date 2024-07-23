@@ -7,9 +7,9 @@
     <LangVersion>11</LangVersion>
     <Nullable>enable</Nullable>
     <ApplicationIcon>egg.ico</ApplicationIcon>
-    <AssemblyVersion>1.1.3.0</AssemblyVersion>
-    <FileVersion>1.1.3.0</FileVersion>
-    <Version>1.1.3</Version>
+    <AssemblyVersion>1.1.4.0</AssemblyVersion>
+    <FileVersion>1.1.4.0</FileVersion>
+    <Version>1.1.4</Version>
   </PropertyGroup>
 
   <ItemGroup>

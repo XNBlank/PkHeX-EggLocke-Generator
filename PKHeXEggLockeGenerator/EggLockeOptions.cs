@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+using Microsoft.Win32.SafeHandles;
 
 namespace PkHeXEggLockeGenerator
 {
@@ -191,6 +192,14 @@ namespace PkHeXEggLockeGenerator
             usableItemIDs = usableItems.Keys.Except(blacklistedItems.Keys);
             usableAbilityIDs = usableAbilites.Keys.Except(blacklistedAbilites.Keys);
 
+            if (usablePokemonIDs.Count() <= 0)
+            {
+                log("Error: Failed to generate Pokémon. All Pokémon are blacklisted.");
+                Interaction.MsgBox("Failed to generate Pokémon. All Pokémon are blacklisted.", MsgBoxStyle.OkOnly, "Error");
+                enableForm(true);
+                return;
+            }
+
             int randomSeedValue = (int)randomSeed.Value;
             if (randomSeedValue > -1)
             {
@@ -268,11 +277,11 @@ namespace PkHeXEggLockeGenerator
             {
                 List<PKM> generatedPokemon = new List<PKM>();
                 int boxID = pcBoxes[i];
-                log($"Generating Pokemon for Box ID {boxID + 1}...");
+                log($"Generating Pokémon for Box ID {boxID + 1}...");
                 // Lets generate a pokemon for every box slot!
                 for (int j = 0; j < pcBoxSize; j++)
                 {
-                    log($"Generating Pokemon #{j + 1}...");
+                    log($"Generating Pokémon #{j + 1}...");
                     PKM pkm = EntityBlank.GetBlank(sav.Generation, version);
                     //pkm.Species = (ushort)random.Next(1, maxSpecies);
                     pkm.Species = (ushort)usablePokemonIDs.ElementAt(random.Next(0, usablePokemonIDs.Count()));
@@ -281,11 +290,11 @@ namespace PkHeXEggLockeGenerator
                     generatedPokemon.Add(GenerateEggs(pkm, sav, version));
                 }
 
-                log($"Shuffling Pokemon around Box ID {boxID + 1}...");
+                log($"Shuffling Pokémon around Box ID {boxID + 1}...");
                 // Shuffle them around for an extra bit of randomness
                 var shuffled = generatedPokemon.OrderByCustom(x => random.Next()).ToList();
 
-                log($"Adding Pokemon to Box ID {boxID + 1}...");
+                log($"Adding Pokémon to Box ID {boxID + 1}...");
                 // Set them in the box
                 sav.ImportPKMs(shuffled, true, boxID);
             }
@@ -410,6 +419,18 @@ namespace PkHeXEggLockeGenerator
                             pkm = item_pkm;
                         }
                     }
+                }
+            }
+
+            // Randomize Form If One Exists
+            if (FormInfo.HasFormSelection(sav.Personal[pkm.Species], pkm.Species, pkm.Format))
+            {
+                string[] forms = FormConverter.GetFormList(pkm.Species, GameInfo.Strings.Types, GameInfo.Strings.forms, GameInfo.GenderSymbolASCII, sav.Context);
+
+                if (forms.Length > 0)
+                {
+                    int randForm = random.Next(0, forms.Length);
+                    pkm.Form = (byte)randForm;
                 }
             }
 
@@ -657,7 +678,8 @@ namespace PkHeXEggLockeGenerator
                             break;
                     }
 
-                    if (blacklist) { 
+                    if (blacklist)
+                    {
                         log($"Blacklisting {ability.Index} - {ability.DisplayValue}");
                         pokemonBlackListAbilities.SetItemChecked(i, blacklist);
                     }
@@ -743,10 +765,19 @@ namespace PkHeXEggLockeGenerator
 
                     bool doCheck = pokemonIsType(pkm, type);
 
-                    if (doCheck) {
+                    if (doCheck)
+                    {
                         pokemonBlackList.SetItemChecked(i, true);
                     }
                 }
+            }
+        }
+
+        private void invertBlackList()
+        {
+            for (int i = 0; i < pokemonBlackList.Items.Count; ++i)
+            {
+                pokemonBlackList.SetItemChecked(i, !pokemonBlackList.GetItemChecked(i));
             }
         }
 
@@ -840,6 +871,10 @@ namespace PkHeXEggLockeGenerator
             setBlackListByType(MoveType.Fairy);
         }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
+            invertBlackList();
+        }
     }
 
     public class Pokemon

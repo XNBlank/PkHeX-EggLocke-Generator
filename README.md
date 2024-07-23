@@ -1,5 +1,5 @@
-# PKHeX Egglocke Generator [ Version 1.1.3 ]
-### Supports PKHeX version 24.03.26
+# PKHeX Egglocke Generator [ Version 1.1.4 ]
+### Supports PKHeX version 24.07.03
 ![Pokemon Egglocke Generator](https://repository-images.githubusercontent.com/627181349/167135ab-b738-4858-8781-0ed97235573c)
 
 A plugin for [PKHeX](https://github.com/kwsch/PKHeX) that generates a PC Box full of randomly generated Pokemon.
@@ -17,10 +17,11 @@ If you want a legal egg generator, please see [PkHeX Bulk Egg Generator](https:/
 
 The current list of attributes of a Pokemon that can be random:
 - Species
+- Form
 - Gender
 - IV Values (1-31)
 - EV Values (0-255)
-- Shiny-ness chance (default 2%)
+- Shiny chance (default 2%)
 - Pokerus chance (default 1 in 65535)
 - Starting Moveset, between 1-4 randomly picked moves
 - Ability (Coinflip on Hidden or Natural Gen4 and earlier, Purely random Gen5 or later)

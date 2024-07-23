@@ -50,7 +50,7 @@ namespace PkHeXEggLockeGenerator
             SaveFile sav = SaveFileEditor.SAV;
 
             // Check if game can even have Eggs
-            if (!Breeding.CanGameGenerateEggs(sav.Context.GetSingleGameVersion()))
+            if (!EncounterGenerator.GetGeneration(sav.Context.GetSingleGameVersion(), sav.Generation).CanGenerateEggs)
             {
                 //! This is ugly but it works for now.
                 Interaction.MsgBox(sav.Context.GetSingleGameVersion().ToString() + " does not support egg generation.", MsgBoxStyle.OkOnly, "Error");
